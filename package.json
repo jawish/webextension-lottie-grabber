@@ -1,9 +1,9 @@
 {
-  "name": "web-extension-starter",
+  "name": "webextension-lottie-grabber",
   "version": "2.0.0",
   "description": "Web extension starter using react and typescript",
   "private": true,
-  "repository": "https://github.com/jawish/web-extension-starter.git",
+  "repository": "https://github.com/jawish/webextension-lottie-grabber.git",
   "author": "Jawish Hameed <jaa@jawish.org>",
   "license": "MIT",
   "engines": {
