@@ -1,0 +1,75 @@
+@import "../styles/fonts";
+@import "../styles/reset";
+@import "../styles/variables";
+
+body {
+  color: $black;
+  background-color: $greyWhite;
+  font-size: 12px;
+  font-family: 'Lucida Sans', 'Lucida Sans Regular', 'Lucida Grande', 'Lucida Sans Unicode', Geneva, Verdana, sans-serif;
+}
+
+
+#popup {
+  min-width: 350px;
+  padding: 30px 20px;
+
+  h2 {
+    font-size: 20px;
+  }
+
+  ul {
+    display: flex;
+    flex-direction: column;
+    margin-top: 1em;
+    justify-content: space-around;
+
+    li {
+      display: flex;
+      flex-direction: row;
+      margin-bottom: 20px;
+
+      div.preview {
+        width: 100px;
+        margin-right: 10px;
+        display: inline-flex;
+      }
+
+      div.details {
+        display: inline-flex;
+        flex-direction: column;
+        margin-right: 10px;
+        width: 100%;
+
+        .detail {
+          display: flex;
+          flex-direction: row;
+          margin-bottom: 3px;
+          justify-content: space-between;
+          border-bottom: 1px dotted #ddd;
+
+          .detail-key {
+            display: inline-flex;
+            color: #999;
+          }
+
+          .detail-value {
+            display: inline-flex;
+            color: #666;
+          }
+        }
+      }
+
+      .btn {
+        display: inline-flex;
+        border-radius: 5px;
+        font-size: 11px;
+        padding: 3px 5px;
+        background-color: rgba(37, 37, 56, 0.7);
+        color: white;
+        cursor: pointer;
+      }
+      
+    }
+  }
+}
