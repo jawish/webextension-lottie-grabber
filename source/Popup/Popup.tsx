@@ -12,10 +12,9 @@ function openWebPage(url: string): Promise<Tabs.Tab> {
   return browser.tabs.create({url});
 }
 
-// function copyClipboard(url: string): void {
-//   // TODO: Figure ot a way to copy to clipboard
-//   console.log(url);
-// }
+function copyClipboard(url: string): void {
+  navigator.clipboard.writeText(url);
+}
 
 const Popup: React.FC<PopupProps> = ({foundLotties}) => {
   return (
@@ -77,45 +76,58 @@ const Popup: React.FC<PopupProps> = ({foundLotties}) => {
                     <span className="detail-value">{data.meta.g}</span>
                   </div>
 
-                  <div className="detail">
+                  {data.meta.d && <div className="detail">
                     <span className="detail-key">Description</span>
                     <span className="detail-value">{data.meta.d}</span>
-                  </div>
+                  </div>}
 
-                  <div className="detail">
+                  {data.meta.a && <div className="detail">
                     <span className="detail-key">Author</span>
                     <span className="detail-value">{data.meta.a}</span>
-                  </div>
+                  </div>}
 
-                  <div className="detail">
+                  {data.meta.k && <div className="detail">
                     <span className="detail-key">Keywords</span>
                     <span className="detail-value">{data.meta.k}</span>
-                  </div>
+                  </div>}
                 </>
               )}
             </div>
-            <a
-              className="btn"
-              onKeyDown={(): Promise<Tabs.Tab> => {
-                return openWebPage(data.lottieUrl);
-              }}
-              onClick={(): Promise<Tabs.Tab> => {
-                return openWebPage(data.lottieUrl);
-              }}
-            >
-              Open URL
-            </a>
-            {/* <span
-              className="btn"
-              onKeyDown={(): void => {
-                return copyClipboard(data.lottieUrl);
-              }}
-              onClick={(): void => {
-                return copyClipboard(data.lottieUrl);
-              }}
-            >
-              Copy Clipboard
-            </span> */}
+            <div className="actions">
+              <a
+                className="btn"
+                onKeyDown={(): Promise<Tabs.Tab> => {
+                  return openWebPage(data.lottieUrl);
+                }}
+                onClick={(): Promise<Tabs.Tab> => {
+                  return openWebPage(data.lottieUrl);
+                }}
+              >
+                Open URL
+              </a>
+              <span
+                className="btn"
+                onKeyDown={(): void => {
+                  return copyClipboard(data.lottieUrl);
+                }}
+                onClick={(): void => {
+                  return copyClipboard(data.lottieUrl);
+                }}
+              >
+                  Copy URL
+              </span>
+              <a
+                className="btn"
+                onKeyDown={(): Promise<Tabs.Tab> => {
+                  return openWebPage(`https://edit.lottiefiles.com/?src=${encodeURI(data.lottieUrl)}`);
+                }}
+                onClick={(): Promise<Tabs.Tab> => {
+                  return openWebPage(`https://edit.lottiefiles.com/?src=${encodeURI(data.lottieUrl)}`);
+                }}
+              >
+                Edit Lottie
+              </a>
+            </div>
           </li>
         ))}
       </ul>

@@ -1,91 +1,144 @@
-import {browser, WebRequest} from 'webextension-polyfill-ts';
+import { browser, WebRequest, WebNavigation } from "webextension-polyfill-ts";
+import { debounce } from "ts-debounce";
 
-const inspectedJsons: string[] = [];
+// Track all discovered JSONs
+const inspectedJsons = new Map();
 
-const updateBadge = (tabId: number, documentUrl: string | undefined): void => {
-  browser.storage.local.get((data: any) => {
-    const tabLotties = Object.keys(data).filter(
-      (key) => data[key].documentUrl === documentUrl
-    );
+// Create a fast hash of a URL
+const hashUrl = (url: string): number => {
+  let hash = 0;
+  let char: number;
 
-    browser.browserAction.setBadgeText({
-      tabId,
-      text: tabLotties.length.toString(),
-    });
-  });
+  const len = url.length;
+
+  if (len === 0) {
+    return hash;
+  }
+
+  for (let i = 0; i < len; i++) {
+    char = url.charCodeAt(i);
+    hash = (hash << 5) - hash + char;
+    hash |= 0; // Convert to 32bit integer
+  }
+
+  return hash;
 };
 
-const getHeader = (
-  headers: WebRequest.HttpHeaders,
-  name: string
-): string | null => {
+// Check if given POJO resembles a Lottie
+const isLottieLike = (json: object): boolean => {
+  return ["v", "ip", "op", "layers", "w", "h", "fr"].every((key) => key in json);
+};
+
+// Update the extension badge with the number of discovered lotties.
+const updateBadge = debounce(async (tabId: number): Promise<void> => {
+  const data = await browser.storage.local.get();
+
+  const tabLotties = Object.keys(data).filter((key) => data[key].tabId === tabId);
+
+  await browser.browserAction.setBadgeText({
+    tabId,
+    text: tabLotties.length.toString(),
+  });
+}, 500);
+
+const getHeader = (headers: WebRequest.HttpHeaders = [], name: string): string => {
   const lcName = name.toLowerCase();
 
   for (let i = 0; i < headers.length; i += 1) {
     if (headers[i].name.toLowerCase() === lcName) {
-      return headers[i].value || null;
+      return headers[i].value || '';
     }
   }
-  return null;
+
+  return '';
 };
 
-const onCompletedListener = async (
-  details: WebRequest.OnCompletedDetailsType
-): Promise<void> => {
-  if (details.statusCode === 200) {
-    if (
-      details.responseHeaders &&
-      getHeader(details.responseHeaders, 'content-type') === 'application/json'
-    ) {
-      if (inspectedJsons.indexOf(details.url) === -1) {
-        inspectedJsons.push(details.url);
+const onRequestCompletedListener = async (details: WebRequest.OnCompletedDetailsType): Promise<void> => {
+  // Skip non 200 HTTP responses and non GET requests
+  if (details.statusCode !== 200 || details.method !== 'GET') {
+    return;
+  }
 
-        const response = await fetch(details.url, {
-          method: details.method,
-        });
+  // Skip non JSON mime-types
+  if (!getHeader(details?.responseHeaders, "content-type").match(/^(application\/json|text\/plain)/)) {
+    return;
+  }
 
-        const json = await response.json();
+  // Create hash of the URL
+  const hashKey = details.tabId + '-' + hashUrl(details.url);
 
-        if (typeof json === 'object') {
-          // Check if lottie
-          const lottieLike = ['v', 'ip', 'op', 'layers', 'w', 'h', 'fr'].every(
-            (key) => key in json
-          );
+  // Skip if URL has already been inspected
+  if (inspectedJsons.has(hashKey)) {
+    return;
+  }
 
-          if (lottieLike) {
-            browser.storage.local.set({
-              [details.url]: {
-                bmVersion: json.v,
-                numLayers: json?.layers.length,
-                width: json.w,
-                height: json.h,
-                frameRate: json.fr,
-                numFrames: json.op - json.ip,
-                meta: 'meta' in json ? json.meta : null,
-                lottieUrl: details.url,
-                documentUrl: details.documentUrl,
-              },
-            });
+  // Add to list of inspected JSONs
+  inspectedJsons.set(hashKey, true);
 
-            updateBadge(details.tabId, details.documentUrl);
-          }
-        }
+  try {
+    // Get contents of the request.
+    // NOTE: Replace this with StreamFilter approach when Chrome and others start supporting it!
+    const response = await fetch(details.url, { method: details.method });
+
+    // Parse contents as JSON
+    const json = await response.json();
+
+    // Ensure JSON is a Lottie
+    if (typeof json === "object" && isLottieLike(json)) {
+      const tab = await browser.tabs.get(details.tabId);
+
+      browser.storage.local.set({
+        [hashKey]: {
+          bmVersion: json.v,
+          numLayers: json?.layers.length,
+          width: json.w,
+          height: json.h,
+          frameRate: json.fr,
+          numFrames: json.op - json.ip,
+          meta: "meta" in json ? json.meta : null,
+          lottieUrl: details.url,
+          tabId: details.tabId,
+          tabUrl: tab.url,
+        },
+      });
+
+      updateBadge(details.tabId);
+    }
+
+    inspectedJsons.delete(hashKey);
+  } catch (err) {
+    // Do nothing...
+  }
+};
+
+const onNavigationBeforeNavigateListener = async (details: WebNavigation.OnBeforeNavigateDetailsType): Promise<void> => {
+  if (details.frameId === 0) {
+    const data = await browser.storage.local.get();
+
+    // Clear out saved discovered Lotties for the tab
+    Object.keys(data).forEach((key) => {
+      if (data[key].tabId === details.tabId) {
+        browser.storage.local.remove(key);
       }
-    }
+    });
   }
-};
+}
 
-browser.browserAction.setBadgeTextColor({
-  color: '#444',
-});
+// Set the badge background
 browser.browserAction.setBadgeBackgroundColor({
-  color: 'rgb(15, 204, 206)',
+  color: "rgb(15, 204, 206)",
 });
 
+// Attach the low level request listener
 browser.webRequest.onCompleted.addListener(
-  onCompletedListener,
+  onRequestCompletedListener,
   {
-    urls: ['<all_urls>'],
+    urls: ["<all_urls>"],
+    types: ["xmlhttprequest"],
   },
-  ['responseHeaders']
+  ["responseHeaders"]
 );
+
+browser.webNavigation.onBeforeNavigate.addListener(onNavigationBeforeNavigateListener);
+
+console.log('Lottie Grabber is ready!');

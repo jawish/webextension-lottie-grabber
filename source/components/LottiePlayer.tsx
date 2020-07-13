@@ -223,7 +223,6 @@ export class LottiePlayer extends React.Component<
       });
     } catch (e) {
       this.setState({playerState: PlayerState.Error});
-      console.log(e);
     }
   }
 

@@ -6,16 +6,18 @@ import Popup from './Popup';
 
 let tabLotties: string[] = [];
 
-browser.storage.local.get(async (data: any) => {
-  const tab = await browser.tabs.query({active: true, currentWindow: true});
+browser.storage.local.get().then(async (data: any) => {
+  try {
+    const tab = await browser.tabs.query({ active: true, currentWindow: true });
 
-  tabLotties = Object.keys(data)
-    .filter((key) => data[key].documentUrl === tab[0].url)
-    .map((key) => {
-      return data[key];
-    });
-
-  console.log(tabLotties);
+    tabLotties = Object.keys(data)
+      .filter((key) => (tab ? data[key].tabId === tab[0].id : true))
+      .map((key) => {
+        return data[key];
+      });
+  } catch (err) {
+    // Do nothing
+  }
 
   ReactDOM.render(
     <Popup foundLotties={tabLotties} />,

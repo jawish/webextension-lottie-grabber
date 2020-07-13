@@ -12,15 +12,15 @@
   "homepage_url": "https://github.com/jawish/webextension-lottie-grabber",
   "short_name": "Lottie Grabber",
   "permissions": [
-    "activeTab",
     "tabs",
     "storage",
     "webRequest",
+    "webNavigation",
     "http://*/*",
     "https://*/*"
   ],
   "content_security_policy": "script-src 'self' 'unsafe-eval'; object-src 'self'",
-  "__chrome|firefox__developer": {
+  "__firefox__developer": {
     "name": "Jawish Hameed",
     "url": "https://github.com/jawish/webextension-lottie-grabber"
   },
@@ -45,15 +45,6 @@
     "scripts": [
       "js/background.bundle.js"
     ],
-    "__chrome|opera__persistent": false
-  },
-  "content_scripts": [{
-    "matches": [
-      "http://*/*",
-      "https://*/*"
-    ],
-    "js": [
-      "js/contentScript.bundle.js"
-    ]
-  }]
+    "__chrome|opera__persistent": true
+  }
 }
