@@ -1,22 +1,22 @@
 import React from 'react';
-import {browser, Tabs} from 'webextension-polyfill-ts';
+import { browser, Tabs } from 'webextension-polyfill-ts';
 
 import './styles.scss';
-import {LottiePlayer} from '../components/LottiePlayer';
+import { DotLottiePlayer } from '@dotlottie/react-player';
 
 interface PopupProps {
-  foundLotties: {[lottieUrl: string]: any};
+  foundLotties: { [lottieUrl: string]: any };
 }
 
 function openWebPage(url: string): Promise<Tabs.Tab> {
-  return browser.tabs.create({url});
+  return browser.tabs.create({ url });
 }
 
 function copyClipboard(url: string): void {
   navigator.clipboard.writeText(url);
 }
 
-const Popup: React.FC<PopupProps> = ({foundLotties}) => {
+const Popup: React.FC<PopupProps> = ({ foundLotties }) => {
   return (
     <section id="popup">
       <h2>Discovered Lotties</h2>
@@ -24,13 +24,16 @@ const Popup: React.FC<PopupProps> = ({foundLotties}) => {
         {foundLotties.map((data: any) => (
           <li>
             <div className="preview">
-              <LottiePlayer
-                src={data.lottieUrl}
-                background="transparent"
-                style={{width: '100px', height: '100px'}}
-                loop
-                autoplay
-              />
+              {
+                <DotLottiePlayer
+                  src={data.lottieUrl}
+                  background="transparant"
+                  className='player'
+                  loop
+                  autoplay
+                >
+                </DotLottiePlayer>
+              }
             </div>
             <div className="details">
               <div className="detail">
@@ -66,6 +69,13 @@ const Popup: React.FC<PopupProps> = ({foundLotties}) => {
                 <span className="detail-key">Num. Layers</span>
                 <span className="detail-value">
                   {Math.ceil(data.numLayers)}
+                </span>
+              </div>
+
+              <div className="detail">
+                <span className="detail-key">Is .lottie</span>
+                <span className="detail-value">
+                  {data.wasDotLottie ? 'Yes' : 'No'}
                 </span>
               </div>
 
@@ -114,15 +124,15 @@ const Popup: React.FC<PopupProps> = ({foundLotties}) => {
                   return copyClipboard(data.lottieUrl);
                 }}
               >
-                  Copy URL
+                Copy URL
               </span>
               <a
                 className="btn"
                 onKeyDown={(): Promise<Tabs.Tab> => {
-                  return openWebPage(`https://edit.lottiefiles.com/?src=${encodeURI(data.lottieUrl)}`);
+                  return openWebPage(`https://editor.lottiefiles.com/?src=${encodeURI(data.lottieUrl)}`);
                 }}
                 onClick={(): Promise<Tabs.Tab> => {
-                  return openWebPage(`https://edit.lottiefiles.com/?src=${encodeURI(data.lottieUrl)}`);
+                  return openWebPage(`https://editor.lottiefiles.com/?src=${encodeURI(data.lottieUrl)}`);
                 }}
               >
                 Edit Lottie
