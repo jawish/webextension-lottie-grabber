@@ -4,7 +4,7 @@ const ZipPlugin = require('zip-webpack-plugin');
 const TerserPlugin = require('terser-webpack-plugin');
 const CopyWebpackPlugin = require('copy-webpack-plugin');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
-const {CleanWebpackPlugin} = require('clean-webpack-plugin');
+const { CleanWebpackPlugin } = require('clean-webpack-plugin');
 const ExtensionReloader = require('webpack-extension-reloader');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 const WextManifestWebpackPlugin = require('wext-manifest-webpack-plugin');
@@ -20,18 +20,18 @@ const targetBrowser = process.env.TARGET_BROWSER;
 const extensionReloaderPlugin =
   nodeEnv === 'development'
     ? new ExtensionReloader({
-        port: 9090,
-        reloadPage: true,
-        entries: {
-          // TODO: reload manifest on update
-          contentScript: 'contentScript',
-          background: 'background',
-          extensionPage: ['popup', 'options'],
-        },
-      })
+      port: 9090,
+      reloadPage: true,
+      entries: {
+        // TODO: reload manifest on update
+        contentScript: 'contentScript',
+        background: 'background',
+        extensionPage: ['popup', 'options'],
+      },
+    })
     : () => {
-        this.apply = () => {};
-      };
+      this.apply = () => { };
+    };
 
 const getExtensionFileType = (browser) => {
   if (browser === 'opera') {
@@ -128,7 +128,7 @@ module.exports = {
     // Plugin to not generate js bundle for manifest entry
     new WextManifestWebpackPlugin(),
     // Generate sourcemaps
-    new webpack.SourceMapDevToolPlugin({filename: false}),
+    new webpack.SourceMapDevToolPlugin({ filename: false }),
     new ForkTsCheckerWebpackPlugin(),
     // environmental variables
     new webpack.EnvironmentPlugin(['NODE_ENV', 'TARGET_BROWSER']),
@@ -157,9 +157,9 @@ module.exports = {
       filename: 'options.html',
     }),
     // write css file(s) to build folder
-    new MiniCssExtractPlugin({filename: 'css/[name].css'}),
+    new MiniCssExtractPlugin({ filename: 'css/[name].css' }),
     // copy static assets
-    new CopyWebpackPlugin([{from: 'source/assets', to: 'assets'}]),
+    new CopyWebpackPlugin([{ from: 'source/assets', to: 'assets' }]),
     // plugin to enable browser reloading in development mode
     extensionReloaderPlugin,
   ],
@@ -167,7 +167,6 @@ module.exports = {
   optimization: {
     minimizer: [
       new TerserPlugin({
-        cache: true,
         parallel: true,
         terserOptions: {
           output: {
@@ -178,7 +177,7 @@ module.exports = {
       }),
       new OptimizeCSSAssetsPlugin({
         cssProcessorPluginOptions: {
-          preset: ['default', {discardComments: {removeAll: true}}],
+          preset: ['default', { discardComments: { removeAll: true } }],
         },
       }),
       new ZipPlugin({

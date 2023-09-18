@@ -1,8 +1,13 @@
 import { browser, WebRequest, WebNavigation } from "webextension-polyfill-ts";
 import { debounce } from "ts-debounce";
+import { validateDotLottie, getAnimations, getManifest } from '@dotlottie/dotlottie-js';
+
 
 // Track all discovered JSONs
 const inspectedJsons = new Map();
+
+// Track all discovered .lotties
+const inspectedDotLotties = new Map();
 
 // Create a fast hash of a URL
 const hashUrl = (url: string): number => {
@@ -59,8 +64,12 @@ const onRequestCompletedListener = async (details: WebRequest.OnCompletedDetails
     return;
   }
 
-  // Skip non JSON mime-types
-  if (!getHeader(details?.responseHeaders, "content-type").match(/^(application\/json|text\/plain)/)) {
+  const header = getHeader(details?.responseHeaders, "content-type");
+  const headerJsonMatch = header.match(/^(application\/json|text\/plain)/);
+  const headerDotLottieMatch = header.match(/^(application\/zip)/);
+
+  // Skip non JSON and .zip (.lottie) mime-types
+  if (!headerJsonMatch && !headerDotLottieMatch) {
     return;
   }
 
@@ -72,42 +81,110 @@ const onRequestCompletedListener = async (details: WebRequest.OnCompletedDetails
     return;
   }
 
+  // Skip if URL has already been inspected
+  if (inspectedDotLotties.has(hashKey)) {
+    return;
+  }
+
+  if (headerJsonMatch) {
   // Add to list of inspected JSONs
-  inspectedJsons.set(hashKey, true);
+    inspectedJsons.set(hashKey, true);
+  } else {
+    // Add to list of inspected JSONs
+    inspectedDotLotties.set(hashKey, true);
+  }
 
-  try {
-    // Get contents of the request.
-    // NOTE: Replace this with StreamFilter approach when Chrome and others start supporting it!
-    const response = await fetch(details.url, { method: details.method });
+  if (details.url.includes('.json')) {
+    try {
+      // Get contents of the request.
+      // NOTE: Replace this with StreamFilter approach when Chrome and others start supporting it!
+      const response = await fetch(details.url, { method: details.method });
+  
+      // Parse contents as JSON
+      const json = await response.json();
+  
+      // Ensure JSON is a Lottie
+      if (typeof json === "object" && isLottieLike(json)) {
+        const tab = await browser.tabs.get(details.tabId);
+  
+        browser.storage.local.set({
+          [hashKey]: {
+            bmVersion: json.v,
+            numLayers: json?.layers.length,
+            width: json.w,
+            height: json.h,
+            frameRate: json.fr,
+            numFrames: json.op - json.ip,
+            meta: "meta" in json ? json.meta : null,
+            lottieUrl: details.url,
+            tabId: details.tabId,
+            tabUrl: tab.url,
+            wasDotLottie: false
+          },
+        });
+  
+        updateBadge(details.tabId);
+      }
+  
+      inspectedJsons.delete(hashKey);
+    } catch (err) {
+      // Do nothing...
+    }   
+  } else if (details.url.includes('.lottie')) {
+    try { 
+      const response = await fetch(details.url, { method: details.method })
+    
+        // Parse contents as JSON
+        const zip = await response.arrayBuffer();
+  
+        const validDotLottie = await validateDotLottie(new Uint8Array(zip));
+  
+        if (validDotLottie.success) {
+          const animations = await getAnimations(new Uint8Array(zip), { inlineAssets: true});
 
-    // Parse contents as JSON
-    const json = await response.json();
+          const manifest = await getManifest(new Uint8Array(zip))
 
-    // Ensure JSON is a Lottie
-    if (typeof json === "object" && isLottieLike(json)) {
-      const tab = await browser.tabs.get(details.tabId);
+          let animationValue;
 
-      browser.storage.local.set({
-        [hashKey]: {
-          bmVersion: json.v,
-          numLayers: json?.layers.length,
-          width: json.w,
-          height: json.h,
-          frameRate: json.fr,
-          numFrames: json.op - json.ip,
-          meta: "meta" in json ? json.meta : null,
-          lottieUrl: details.url,
-          tabId: details.tabId,
-          tabUrl: tab.url,
-        },
-      });
+          // Grab first animation
+          if (manifest && manifest.animations) {
+              if (manifest.activeAnimationId) {
+                animationValue = animations[manifest.activeAnimationId];
+              } else {
+                animationValue = animations[manifest?.animations[0].id];
+              }
+            } else { 
+              animationValue = animations[Object.keys(animations)[0]]
+            } 
 
-      updateBadge(details.tabId);
+            // Ensure JSON is a Lottie
+            if (typeof animationValue === "object" && isLottieLike(animationValue)) {
+              const tab = await browser.tabs.get(details.tabId);
+  
+              browser.storage.local.set({
+                [hashKey]: {
+                  bmVersion: animationValue.v,
+                  numLayers: animationValue?.layers.length,
+                  width: animationValue.w,
+                  height: animationValue.h,
+                  frameRate: animationValue.fr,
+                  numFrames: animationValue.op - animationValue.ip,
+                  meta: "meta" in animationValue ? animationValue.meta : null,
+                  lottieUrl: details.url,
+                  tabId: details.tabId,
+                  tabUrl: tab.url,
+                  wasDotLottie: true
+                },
+              });
+  
+                updateBadge(details.tabId);
+              }
+              inspectedDotLotties.delete(hashKey);
+              
+        } 
+    } catch (err) {
+        // Do nothing...
     }
-
-    inspectedJsons.delete(hashKey);
-  } catch (err) {
-    // Do nothing...
   }
 };
 
